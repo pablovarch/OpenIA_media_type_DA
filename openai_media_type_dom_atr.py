@@ -417,7 +417,7 @@ def domain_needs_processing(domain_id: int) -> bool:
         release_db_connection(conn)
 
 
-def get_all_discovery_domains() -> list[int]:
+def get_all_domain_attributes() -> list[int]:
     """
     Get all domain_id from domain_attributes table.
     Returns list of domain IDs to process.
@@ -440,7 +440,7 @@ def get_all_discovery_domains() -> list[int]:
                 JOIN dom_content dc ON dc.ad_event_id = ae.ad_event_id
                 WHERE ae.domain_id = da.domain_id
                   AND dc.dom_content IS NOT NULL
-                  AND dc.dom_content_label IN ('home_mhtml', 'last_mthml')
+                  AND dc.dom_content_label IN ('home_mhtml', 'last_mhtml')
               )
             LIMIT %s
         """
@@ -487,7 +487,7 @@ def get_html(domain_id: int) -> str | None:
                     FROM dom_content dc
                     WHERE dc.ad_event_id = ae.ad_event_id
                       AND dc.dom_content IS NOT NULL
-                      AND dc.dom_content_label IN ('home_mhtml', 'last_mthml')
+                      AND dc.dom_content_label IN ('home_mhtml', 'last_mhtml')
                   )
                 ORDER BY ae.event_date DESC, ae.ad_event_id DESC
                 LIMIT 1
@@ -496,8 +496,8 @@ def get_html(domain_id: int) -> str | None:
             FROM dom_content dc
             JOIN last_event le ON le.ad_event_id = dc.ad_event_id
             WHERE dc.dom_content IS NOT NULL
-              AND dc.dom_content_label IN ('home_mhtml', 'last_mthml')
-            ORDER BY (dc.dom_content_label = 'last_mthml') DESC, dc.dom_content_id DESC
+              AND dc.dom_content_label IN ('home_mhtml', 'last_mhtml')
+            ORDER BY (dc.dom_content_label = 'last_mhtml') DESC, dc.dom_content_id DESC
             LIMIT 1
         """
         
@@ -693,7 +693,7 @@ async def main():
     
     try:
         # Get all domain IDs to process
-        domain_ids = get_all_discovery_domains()
+        domain_ids = get_all_domain_attributes()
         
         if not domain_ids:
             logger.info("No domains to process. Exiting.")
