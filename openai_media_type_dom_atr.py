@@ -441,6 +441,7 @@ def get_all_domain_attributes() -> list[int]:
                 WHERE ae.domain_id = da.domain_id
                   AND dc.dom_content IS NOT NULL
                   AND dc.dom_content_label IN ('home_mhtml', 'last_mhtml')
+                  AND ae.is_popup is false
               )
             LIMIT %s
         """
