@@ -740,6 +740,7 @@ def get_all_domain_attributes_domains() -> list[int]:
             SELECT da.{domain_id_col}
             FROM {table} da
             WHERE da.{media_type_col} IS NOT NULL
+              AND  da.{media_type_col} <> 17
               AND da.{enforcement_col} IS NULL
               AND EXISTS (
                 SELECT 1
