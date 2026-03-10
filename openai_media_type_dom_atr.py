@@ -150,7 +150,7 @@ Do NOT use Games for:
 - Betting/casino game sites (use Other, ID: 12, unless clearly sports betting → Sports, ID: 2)
 
 
-### ID: 16 - Books
+### ID: 5 - Publishing
 Classify as Books if the site is mainly about:
 - Online PDF/book download sites (ebooks, novels, manuals)
 - Book marketplaces (physical or digital)
@@ -251,7 +251,7 @@ Only use invalid (ID: 17) when the problem is missing/blocked content, not ambig
 
 - Follow the MediaTypeResponse schema.
 - Set `media_type` to EXACTLY ONE of the following integer IDs:
-  1, 3, 4, 2, 6, 16, 14, 8, 9, 10, 13, 7, 12, 17
+  1, 3, 4, 2, 6, 5, 14, 8, 9, 10, 13, 7, 12, 17
 - Do NOT include explanations or additional fields.
 '''
 
