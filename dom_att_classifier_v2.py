@@ -39,7 +39,7 @@ DOMAIN_PROCESS_LIMIT = int(os.getenv("DOMAIN_PROCESS_LIMIT", "1000"))
 DOMAIN_ATTRIBUTES_TABLE = os.getenv("DOMAIN_ATTRIBUTES_TABLE", "domain_attributes")
 DOMAIN_ID_COLUMN = os.getenv("DOMAIN_ID_COLUMN", "domain_id")
 MEDIA_TYPE_COLUMN = os.getenv("MEDIA_TYPE_COLUMN", "ml_media_type_v2_id")
-ENFORCEMENT_LABEL_COLUMN = os.getenv("ENFORCEMENT_LABEL_COLUMN", "ml_domain_classification_v2_id")
+ENFORCEMENT_LABEL_COLUMN = os.getenv("ENFORCEMENT_LABEL_COLUMN", "ml_domain_classification_id")
 
 PIRACY_KEYWORDS_TABLE = os.getenv("PIRACY_KEYWORDS_TABLE", "ml_piracy_keywords")
 PIRACY_KEYWORDS_COLUMN = os.getenv("PIRACY_KEYWORDS_COLUMN", "keyword")
@@ -55,7 +55,7 @@ db_pool: pool.ThreadedConnectionPool | None = None
 
 
 class EnforcementResponse(BaseModel):
-    label_id: Literal[0, 1, 9, 12, 15, 16, 17, 18, 19]
+    label_id: Literal[0, 1, 13, 12, 15, 16, 17, 18, 19]
 
 
 ENFORCEMENT_CLASSIFICATION_PROMPT = '''You are a web domain enforcement classifier (second stage in a pipeline).
@@ -73,7 +73,7 @@ You MUST respond using the EnforcementResponse schema, setting the integer field
 
 0  = Exclude
 1  = Enforce
-9  = Content Host
+13  = Content Host
 12 = Illegal Pornography
 15 = Social Media
 16 = Stream Ripper
@@ -110,7 +110,7 @@ You must choose ONE of the following labels (IDs):
 
 ID 0 - Exclude
 ID 1 - Enforce
-ID 9 - Content Host
+ID 13 - Content Host
 ID 12 - Illegal Pornography
 ID 15 - Social Media
 ID 16 - Stream Ripper
@@ -170,7 +170,7 @@ News:
 - News media type should generally be EXCLUDE (ID 0). Only mark ENFORCE if the site is clearly using “news” as a façade but the main value is direct infringing content (HTML must show this clearly).
 
 Content Host media type:
-- If it is a generic file hosting/search platform, and it acts as a passive tech platform with takedown processes and no obvious search/indexing of infringing content, use Content Host (ID 9) or Exclude (ID 0).
+- If it is a generic file hosting/search platform, and it acts as a passive tech platform with takedown processes and no obvious search/indexing of infringing content, use Content Host (ID 13) or Exclude (ID 0).
 - If it clearly promotes and exposes infringing content prominently, use ENFORCE (ID 1), or a more specific label like Stream Ripper / Piracy Apps / IPTV Piracy, if applicable.
 
 Gambling:
@@ -293,9 +293,9 @@ Even if some users may upload infringing content, large social platforms with mo
 Do NOT use Social Media (ID 15) for small pirate streaming sites that just have comments; those should be ENFORCE (ID 1) or other piracy labels.
 
 
-### ID 9 - Content Host
+### ID 13 - Content Host
 
-Use ID 9 when the site is primarily a CONTENT HOST or storage provider:
+Use ID 13 when the site is primarily a CONTENT HOST or storage provider:
 
 - Offers file storage or streaming as a service.
 - May require login or account.
@@ -321,7 +321,7 @@ When deciding, follow this priority order:
 4) Else, if it is clearly a PIRACY APP distribution site -> label_id = 17.
 5) Else, if it is clearly a mainstream SOCIAL MEDIA / UGC platform -> label_id = 15.
 6) Else, if it is a pure FORUM meeting the "Forum Only" criteria (private/uncertain, non-piracy purpose) -> label_id = 18.
-7) Else, if it is a CONTENT HOST/storage service -> label_id = 9 (unless obviously promoting piracy → then ENFORCE).
+7) Else, if it is a CONTENT HOST/storage service -> label_id = 13 (unless obviously promoting piracy → then ENFORCE).
 8) Else, decide between ENFORCE (ID 1) and EXCLUDE (ID 0) based on:
    - Presence of clearly infringing commercial content vs. only reviews/news.
    - Media type (Film & TV, Anime, Games, Software, Publishing, Music, Sports, Adult, etc.).
@@ -336,7 +336,7 @@ OUTPUT REQUIREMENTS
 -------------------------
 
 You MUST respond using the EnforcementResponse schema, with:
-- label_id: ONE of {0, 1, 9, 12, 15, 16, 17, 18, 19}
+- label_id: ONE of {0, 1, 13, 12, 15, 16, 17, 18, 19}
 
 Do NOT include explanations, text, or additional fields. Only set `label_id`.
 '''
@@ -1076,7 +1076,7 @@ async def classify_enforcement(
 
         label_id = int(result.label_id)
 
-        if label_id in {0, 1, 9, 12, 15, 16, 17, 18, 19}:
+        if label_id in {0, 1, 13, 12, 15, 16, 17, 18, 19}:
             logger.info(
                 f"domain_id {domain_id} classified as label_id: {label_id}"
             )
