@@ -403,13 +403,13 @@ def domain_needs_processing(domain_id: int) -> bool:
             SELECT 1
             FROM domain_attributes da
             WHERE da.domain_id = %s
-              AND da.ml_media_type_v2_id IS NULL
+              AND da.ml_media_type_id IS NULL
             """,
             (domain_id,),
         )
         return cursor.fetchone() is not None
     except Exception as e:
-        logger.error(f"Error checking ml_media_type_v2_id for domain_id {domain_id}: {e}")
+        logger.error(f"Error checking ml_media_type_id for domain_id {domain_id}: {e}")
         return False
     finally:
         if cursor:
@@ -433,7 +433,7 @@ def get_all_domain_attributes() -> list[int]:
         sql_string = """
             SELECT da.domain_id
             FROM domain_attributes da
-            WHERE da.ml_media_type_v2_id IS NULL
+            WHERE da.ml_media_type_id IS NULL
               AND EXISTS (
                 SELECT 1
                 FROM ad_events ae
@@ -520,7 +520,7 @@ def get_html(domain_id: int) -> str | None:
 
 def update_media_type(domain_id: int, ml_media_type_id: int) -> bool:
     """
-    Update ml_media_type_v2_id in domain_attributes for a specific domain_id.
+    Update ml_media_type_id in domain_attributes for a specific domain_id.
     Returns True if successful, False otherwise.
     """
     conn = None
@@ -533,7 +533,7 @@ def update_media_type(domain_id: int, ml_media_type_id: int) -> bool:
         
         sql_string = """
             UPDATE domain_attributes
-            SET ml_media_type_v2_id = %s
+            SET ml_media_type_id = %s
             WHERE domain_id = %s
         """
         
@@ -646,7 +646,7 @@ async def process_domain(
     async with semaphore:
         try:
             if not domain_needs_processing(domain_id):
-                logger.info(f"domain_id {domain_id} already has ml_media_type_v2_id set, skipping")
+                logger.info(f"domain_id {domain_id} already has ml_media_type_id set, skipping")
                 return (domain_id, 'skipped')
 
             # Step 1: Get HTML content

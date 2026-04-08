@@ -38,7 +38,7 @@ DOMAIN_PROCESS_LIMIT = int(os.getenv("DOMAIN_PROCESS_LIMIT", "1000"))
 
 DOMAIN_ATTRIBUTES_TABLE = os.getenv("DOMAIN_ATTRIBUTES_TABLE", "domain_attributes")
 DOMAIN_ID_COLUMN = os.getenv("DOMAIN_ID_COLUMN", "domain_id")
-MEDIA_TYPE_COLUMN = os.getenv("MEDIA_TYPE_COLUMN", "ml_media_type_v2_id")
+MEDIA_TYPE_COLUMN = os.getenv("MEDIA_TYPE_COLUMN", "ml_media_type_id")
 ENFORCEMENT_LABEL_COLUMN = os.getenv("ENFORCEMENT_LABEL_COLUMN", "ml_domain_classification_id")
 
 PIRACY_KEYWORDS_TABLE = os.getenv("PIRACY_KEYWORDS_TABLE", "ml_piracy_keywords")
