@@ -12,16 +12,12 @@ from settings import DB_CONNECTION
 from dotenv import load_dotenv
 from typing import Literal
 
-
-
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-
 
 load_dotenv()
 logger.info('Loading script')
@@ -41,10 +37,8 @@ DB_POOL_MAX_CONN = 10
 db_pool: pool.ThreadedConnectionPool | None = None
 
 
-
 class MediaTypeResponse(BaseModel):
     media_type: Literal[1, 3, 4, 2, 6, 5, 14, 8, 9, 10, 13, 7, 12, 17]
-
 
 
 MEDIA_TYPE_CLASSIFICATION_PROMPT = '''You are a media type classifier.
@@ -268,28 +262,31 @@ def extract_semantic_content(html_content: str) -> dict:
         'headings': [],
         'body_text': ''
     }
-    
+
     # Extract <title>
     title_match = re.search(r'<title[^>]*>([^<]+)</title>', html_content, re.IGNORECASE)
     if title_match:
         result['title'] = title_match.group(1).strip()
-    
+
     # Extract meta description
-    meta_desc = re.search(r'<meta[^>]*name=["\']description["\'][^>]*content=["\']([^"\'>]+)["\']', html_content, re.IGNORECASE)
+    meta_desc = re.search(r'<meta[^>]*name=["\']description["\'][^>]*content=["\']([^"\'>]+)["\']', html_content,
+                          re.IGNORECASE)
     if not meta_desc:
-        meta_desc = re.search(r'<meta[^>]*content=["\']([^"\'>]+)["\'][^>]*name=["\']description["\']', html_content, re.IGNORECASE)
+        meta_desc = re.search(r'<meta[^>]*content=["\']([^"\'>]+)["\'][^>]*name=["\']description["\']', html_content,
+                              re.IGNORECASE)
     if meta_desc:
         result['meta_description'] = meta_desc.group(1).strip()
-    
+
     # Extract meta keywords
-    meta_kw = re.search(r'<meta[^>]*name=["\']keywords["\'][^>]*content=["\']([^"\'>]+)["\']', html_content, re.IGNORECASE)
+    meta_kw = re.search(r'<meta[^>]*name=["\']keywords["\'][^>]*content=["\']([^"\'>]+)["\']', html_content,
+                        re.IGNORECASE)
     if meta_kw:
         result['meta_keywords'] = meta_kw.group(1).strip()
-    
+
     # Extract headings (h1-h3)
     headings = re.findall(r'<h[1-3][^>]*>([^<]+)</h[1-3]>', html_content, re.IGNORECASE)
     result['headings'] = [h.strip() for h in headings[:10]]  # Limit to 10 headings
-    
+
     return result
 
 
@@ -300,10 +297,10 @@ def preprocess_html(html_content: str) -> str | None:
     """
     if not html_content:
         return None
-    
+
     # Extract semantic content first
     semantic = extract_semantic_content(html_content)
-    
+
     # Build structured prefix with key signals
     prefix_parts = []
     if semantic['title']:
@@ -314,9 +311,9 @@ def preprocess_html(html_content: str) -> str | None:
         prefix_parts.append(f"KEYWORDS: {semantic['meta_keywords']}")
     if semantic['headings']:
         prefix_parts.append(f"HEADINGS: {' | '.join(semantic['headings'])}")
-    
+
     prefix = '\n'.join(prefix_parts)
-    
+
     # Clean body text (remove scripts, styles, tags)
     text = html_content
     text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL | re.IGNORECASE)
@@ -324,17 +321,17 @@ def preprocess_html(html_content: str) -> str | None:
     text = re.sub(r'<[^>]+>', ' ', text)
     text = re.sub(r'[\U00010000-\U0010ffff]', '', text)  # Remove emojis
     text = re.sub(r'\s+', ' ', text).strip()
-    
+
     # Combine prefix + body text
     if prefix:
         full_text = f"{prefix}\n\nCONTENT: {text}"
     else:
         full_text = text
-    
+
     # Truncate to MAX_HTML_CHARS
     if len(full_text) > MAX_HTML_CHARS:
         full_text = full_text[:MAX_HTML_CHARS] + "... [TRUNCATED]"
-    
+
     return full_text if full_text.strip() else None
 
 
@@ -425,11 +422,11 @@ def get_all_domain_attributes() -> list[int]:
     conn = None
     cursor = None
     domain_ids = []
-    
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         sql_string = """
             SELECT da.domain_id
             FROM domain_attributes da
@@ -445,23 +442,23 @@ def get_all_domain_attributes() -> list[int]:
               )
             LIMIT %s
         """
-        
+
         cursor.execute(sql_string, (MAX_DOMAINS_PER_RUN,))
         results = cursor.fetchall()
-        
+
         if results:
             domain_ids = [row[0] for row in results]
             logger.info(f"Found {len(domain_ids)} domains to process")
         else:
             logger.info("No domains found to process")
-            
+
     except Exception as e:
         logger.error(f"Error getting domains to process: {e}")
     finally:
         if cursor:
             cursor.close()
         release_db_connection(conn)
-    
+
     return domain_ids
 
 
@@ -473,16 +470,17 @@ def get_html(domain_id: int) -> str | None:
     conn = None
     cursor = None
     html_content = None
-    
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         sql_string = """
             WITH last_event AS (
                 SELECT ae.ad_event_id
                 FROM ad_events ae
                 WHERE ae.domain_id = %s
+                  AND ae.is_popup IS FALSE
                   AND EXISTS (
                     SELECT 1
                     FROM dom_content dc
@@ -501,20 +499,20 @@ def get_html(domain_id: int) -> str | None:
             ORDER BY (dc.dom_content_label = 'last_mhtml') DESC, dc.dom_content_id DESC
             LIMIT 1
         """
-        
+
         cursor.execute(sql_string, (domain_id,))
         result = cursor.fetchone()
-        
+
         if result:
             html_content = result[0]
-            
+
     except Exception as e:
         logger.error(f"Error getting HTML for domain_id {domain_id}: {e}")
     finally:
         if cursor:
             cursor.close()
         release_db_connection(conn)
-    
+
     return html_content
 
 
@@ -526,21 +524,21 @@ def update_media_type(domain_id: int, ml_media_type_id: int) -> bool:
     conn = None
     cursor = None
     success = False
-    
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         sql_string = """
             UPDATE domain_attributes
             SET ml_media_type_id = %s
             WHERE domain_id = %s
         """
-        
+
         cursor.execute(sql_string, (ml_media_type_id, domain_id))
         conn.commit()
         success = True
-        
+
     except Exception as e:
         logger.error(f"Error updating media type for domain_id {domain_id}: {e}")
         if conn:
@@ -549,7 +547,7 @@ def update_media_type(domain_id: int, ml_media_type_id: int) -> bool:
         if cursor:
             cursor.close()
         release_db_connection(conn)
-    
+
     return success
 
 
@@ -562,9 +560,9 @@ def update_media_type(domain_id: int, ml_media_type_id: int) -> bool:
     )
 )
 async def classify_media_type(
-    client: AsyncOpenAI,
-    processed_html: str,
-    domain_id: int
+        client: AsyncOpenAI,
+        processed_html: str,
+        domain_id: int
 ) -> int:
     """
     Classify processed HTML content into a media type using OpenAI.
@@ -634,10 +632,11 @@ async def classify_media_type(
         )
         return 12
 
+
 async def process_domain(
-    client: AsyncOpenAI,
-    domain_id: int,
-    semaphore: asyncio.Semaphore
+        client: AsyncOpenAI,
+        domain_id: int,
+        semaphore: asyncio.Semaphore
 ) -> tuple[int, str]:
     """
     Process a single domain: get HTML, classify, and update DB.
@@ -651,32 +650,32 @@ async def process_domain(
 
             # Step 1: Get HTML content
             html_content = get_html(domain_id)
-            
+
             if not html_content:
                 logger.warning(f"No HTML found for domain_id {domain_id}, skipping")
                 return (domain_id, 'skipped')
-            
+
             # Step 2: Preprocess HTML
             processed_html = preprocess_html(html_content)
-            
+
             # Step 3: Check if valid
             if invalid_html(processed_html):
                 logger.info(f"Invalid HTML for domain_id {domain_id}, setting media_type to 17 (invalid)")
                 update_media_type(domain_id, 17)
                 return (domain_id, 'processed')
-            
+
             # Step 4: Classify with OpenAI
             media_type_id = await classify_media_type(client, processed_html, domain_id)
-            
+
             # Step 5: Update database
             success = update_media_type(domain_id, media_type_id)
-            
+
             if success:
                 logger.info(f"Successfully updated domain_id {domain_id} with media_type {media_type_id}")
                 return (domain_id, 'processed')
             else:
                 return (domain_id, 'error')
-                
+
         except Exception as e:
             logger.error(f"Error processing domain_id {domain_id}: {e}")
             return (domain_id, 'error')
@@ -685,40 +684,40 @@ async def process_domain(
 async def main():
     """Main async entry point with concurrent processing."""
     logger.info("Starting media type classification process")
-    
+
     # Initialize OpenAI client
     client = AsyncOpenAI(api_key=OPENAI_APIKEY)
-    
+
     # Initialize DB pool
     init_db_pool()
-    
+
     try:
         # Get all domain IDs to process
         domain_ids = get_all_domain_attributes()
-        
+
         if not domain_ids:
             logger.info("No domains to process. Exiting.")
             return
-        
+
         logger.info(f"Processing {len(domain_ids)} domains with {MAX_CONCURRENT_REQUESTS} concurrent requests")
-        
+
         # Create semaphore for rate limiting
         semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
-        
+
         # Create tasks for all domains
         tasks = [
             process_domain(client, domain_id, semaphore)
             for domain_id in domain_ids
         ]
-        
+
         # Execute all tasks concurrently
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         # Count results
         processed_count = 0
         skipped_count = 0
         error_count = 0
-        
+
         for result in results:
             if isinstance(result, Exception):
                 error_count += 1
@@ -730,7 +729,7 @@ async def main():
                     skipped_count += 1
                 else:
                     error_count += 1
-        
+
         # Summary
         logger.info("=" * 60)
         logger.info("EXECUTION SUMMARY")
@@ -740,7 +739,7 @@ async def main():
         logger.info(f"Errors: {error_count}")
         logger.info("=" * 60)
         logger.info("Ending execution")
-        
+
     finally:
         # Always close the DB pool
         close_db_pool()
