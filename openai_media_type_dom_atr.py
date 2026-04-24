@@ -85,11 +85,11 @@ Do NOT use Film & TV for:
 
 
 ### ID: 3 - Anime
-Classify as Anime if the site is mainly about:
-- Online anime streaming
-- Sites that offer BOTH anime AND manga content together
+Classify as Anime if the site's PRIMARY content is anime (Japanese animated series/films) or anime+manga:
+- Online anime streaming sites where anime episodes/films are the main catalog
+- Sites that offer BOTH anime AND manga content together as the main offering
 - Stores EXCLUSIVELY selling anime/manga related items (clothes, toys, figures, magazines, etc.)
-- Torrent or download sites offering anime content (with or without manga)
+- Torrent or download sites where anime episodes/films are the PRIMARY content being distributed
 
 Priority rule:
 - If the site offers BOTH anime AND manga content, prefer Anime (ID: 3) instead of Manga (ID: 4).
@@ -98,6 +98,9 @@ Do NOT use Anime for:
 - General cartoon sites mixed with movies/series (prefer Film & TV, ID: 1, if focused on video/TV)
 - General download sites with many categories
 - Manga-only sites without anime content (use Manga, ID: 4)
+- Video game download/torrent sites that merely have "Anime" as one genre tag among many (Action, RPG, Racing, Strategy, etc.) — these are Games (ID: 6)
+- Video games with anime-style art, Japanese aesthetic, or anime-inspired characters — the medium is still a GAME, use Games (ID: 6)
+- Sites distributing visual novels as PC games with anime art — use Games (ID: 6)
 
 
 ### ID: 4 - Manga
@@ -132,29 +135,62 @@ Do NOT use Sports for:
 
 ### ID: 6 - Games
 Classify as Games if the site is mainly dedicated to video games:
-- Game download sites
-- Cheat codes, game cracks, or trainers sites
-- Torrent sites EXCLUSIVELY for game content
-- Online gaming platforms and stores (Steam, Epic Games, EA, Battle.net)
-- Sites for in-game currency or tokens (e.g. coins, skins marketplaces)
+- PC/console game download, repack, crack, torrent or "Free Download" sites (e.g. IGG-Games, FitGirl Repacks, DODI Repacks, SteamRIP, KenGamer, Skidrow)
+- Cheat codes, game cracks, trainers, game mods or game fixes sites
+- Torrent sites where PC/console games are the primary content
+- Online gaming platforms and stores (Steam, Epic Games, EA, Battle.net, GOG, itch.io)
+- Sites for in-game currency, tokens, skins or account marketplaces
+- Visual novel download sites (visual novels are games, even with anime art)
+
+Strong signals that indicate Games (even when "anime", "torrent" or "download" appear):
+- Titles with version tags like "(v1.2.3)", "(v20260408)", "Premium Edition", "Definitive Edition", "GOTY", "Deluxe Edition"
+- Phrases "Free Download", "PC Game", "Game Setup", "PC Free Download", "Cracked By", "Repack", "Pre-installed", "Direct Link and Torrent", "All DLCs", "Denuvo", "CODEX", "RELOADED"
+- Game metadata: "Game Size: X GB", "Publisher:", "Developer:", "Release Date:", "MULTi13", "From X GB"
+- Game genres listed as tags: Action, RPG, Adventure, Racing, Strategy, Simulation, Shooter, Survival, Horror, Point & Click, Visual Novel, Sandbox, Roguelike, MMO, FPS, RTS (even if "Anime" is also one of the genre tags — having Anime as ONE genre among many game genres still means it's a Games site)
+- Menu items like "Game List", "Game Request", "All Games (A-Z)", "Categories" full of game genres, "Most Downloaded" (games), "Latest News" about games
+- Known game franchises mentioned (Assassin's Creed, GTA, Resident Evil, EA Sports, Call of Duty, Dark Souls, Doom, Final Fantasy, etc.)
+
+Disambiguation:
+- Game site with "Anime" as a genre tag → Games (ID: 6), NOT Anime (ID: 3)
+- Games with anime-style art or Japanese visuals → Games (ID: 6), NOT Anime (ID: 3)
+- A site distributing game repacks of MANY titles across many genres is still Games (ID: 6), NOT Content Host (ID: 13), because all items are one media type (games)
 
 Do NOT use Games for:
-- General download sites that also host software, movies, etc. (use Content Host, ID: 13)
+- General download sites that truly mix games + movies + music + software together (use Content Host, ID: 13)
 - Clothing marketplaces with some game-related merchandise (use Other, ID: 12)
 - Betting/casino game sites (use Other, ID: 12, unless clearly sports betting → Sports, ID: 2)
 
 
 ### ID: 5 - Publishing
-Classify as Publishing if the site is mainly about:
-- Online PDF/book download sites (ebooks, novels, manuals)
+Classify as Publishing if the site's PRIMARY focus is books, ebooks, PDFs, documents or written publications, including:
+- Online PDF/book download or read-online sites (ebooks, novels, manuals, textbooks)
+- Book catalogs, libraries or repositories (free or paid, legal or not)
 - Book marketplaces (physical or digital)
 - Audiobook download or streaming sites
-- Scientific research/document repositories (papers, journals, academic publications)
+- Scientific research/document repositories (papers, journals, academic publications, theses)
+- Document sharing platforms focused on PDFs/DOCs (e.g. Scribd-like, vdoc.pub, pdfroom, bookfrom.net, pdfdrive)
+- Sites offering ePUB, MOBI, AZW, PDF or other book/document formats for download or reading
+
+Strong signals that indicate Publishing (even if the word "download" appears):
+- Book covers displayed as main content grid/listing
+- Author names, ISBN, publisher, publication year, number of pages
+- Literary or academic categories (Fiction, Romance, Medicine, Psychology, Self-help, Thriller, etc.)
+- File formats restricted to books/documents: PDF, ePUB, MOBI, AZW, DJVU
+- Breadcrumbs or menus like "All Categories > [Author name]", "Home > [Genre] > [Book title]"
+- Book metadata: ratings, reviews, pages count, file size of a single book
+- Terms like "Read online", "Free ebooks", "PDF books", "Book library", "Audiobook"
+
+Priority / disambiguation rules:
+- If the site offers ONLY books/PDFs/documents (even many of them, even with a "Download" button), use Publishing (ID: 5), NOT Content Host (ID: 13).
+- Content Host (ID: 13) requires MIXED distinct media categories (e.g. software + movies + music + books together). A site that only hosts books/PDFs across many genres is still Publishing.
+- A book cover showing suggestive imagery (e.g. romance novel cover) does NOT make the site Adult (ID: 9) if the structure is clearly a book catalog. Only use Adult (ID: 9) when the CONTENT ITSELF is pornographic, not when book covers are suggestive.
+- If the site is dedicated to academic/scientific papers or medical/technical documents, still use Publishing (ID: 5).
 
 Do NOT use Publishing for:
 - Manga-only sites (use Manga, ID: 4)
 - Sites with manga and anime (use Anime, ID: 3)
 - General college/university sites that focus on institutional information (use Other, ID: 12)
+- Sites that truly mix books with unrelated media types like software, games, movies, music (use Content Host, ID: 13)
 
 
 ### ID: 14 - Online Courses
@@ -202,11 +238,19 @@ Do NOT use News for:
 
 
 ### ID: 13 - Content Host
-Classify as Content Host when the site is a general file hosting or distribution platform:
-- General download sites hosting multiple media types (movies, series, games, software, music, Publishing, etc.)
-- Torrent or file indexing sites with several distinct categories
+Classify as Content Host ONLY when the site hosts/distributes MULTIPLE DISTINCT media categories simultaneously:
+- General download sites hosting a MIX of movies + series + games + software + music + books, etc.
+- Torrent or file indexing sites with SEVERAL distinct media categories (not just many items of the same category)
 
-Use Content Host (ID: 13) when no single media type clearly dominates and the main role is indexing/hosting diverse files.
+Key requirement: Content Host (ID: 13) requires MIXED media types. If a single media type clearly dominates, use THAT specific category:
+- Only books/PDFs/documents (even thousands of them) → Publishing (ID: 5)
+- Only movies/series → Film & TV (ID: 1)
+- Only music → Music (ID: 8)
+- Only games → Games (ID: 6)
+- Only software → Software (ID: 7)
+- Only anime (with or without manga) → Anime (ID: 3)
+
+Use Content Host (ID: 13) only when NO single media type dominates and the site's main role is indexing/hosting a diverse mix of unrelated file categories.
 
 
 ### ID: 7 - Software
@@ -592,7 +636,7 @@ async def classify_media_type(
             # Para clasificación: determinismo y bajo coste
             # GPT-5.1 usa reasoning tokens internamente, necesita margen
             temperature=0,
-            max_completion_tokens=128,
+            max_completion_tokens=256,
             store=False,
         )
 

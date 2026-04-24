@@ -23,7 +23,7 @@ logger.info('Loading script')
 OPENAI_APIKEY = openia_apikey
 
 # Configuration constants
-MAX_HTML_CHARS = 80000  # ~5k tokens approx
+MAX_HTML_CHARS = 120000  # ~5k tokens approx
 MAX_CONCURRENT_REQUESTS = 5  # Semaphore limit for API calls
 DB_POOL_MIN_CONN = 1
 DB_POOL_MAX_CONN = 10
@@ -97,6 +97,49 @@ You must primarily rely on:
 Use ssl_score only as a secondary signal in ambiguous cases, never as the sole reason for an enforcement decision.
 Use privacy_policy_detected and terms_of_use_detected only as WEAK legitimacy hints: pirates can copy or fake these pages. Do NOT choose Exclude solely because these are True.
 
+IMPORTANT: The HTML can be in ANY language (Spanish, Chinese, Korean, Japanese, Portuguese, Russian, Arabic, Turkish, etc.). Do NOT bias toward Exclude just because the site is not in English. Non-English pirate sites are extremely common (e.g. Spanish "ver online", Chinese 在线观看, Korean 보기, Japanese 無料視聴).
+
+-------------------------
+STRONG PIRACY SIGNALS (override generic legitimacy hints)
+-------------------------
+
+Treat ANY of the following as strong evidence of infringement. If one or more of these appear on a Film & TV / Anime / Manga / Sports / Adult / Games / Software / Music / Publishing site, DO NOT classify as Exclude just because the site looks polished, has a Privacy Policy, a footer with legal links, or social media icons.
+
+1) FAKE SAFE-HARBOR DISCLAIMER in footer / legal copy, such as:
+   - "This site does not store any files on its servers"
+   - "We do not host any videos/files"
+   - "All content is provided by non-affiliated third parties"
+   - "Este sitio no almacena ningún video / ningún archivo en sus servidores"
+   - "No alojamos ningún contenido, solo compartimos enlaces"
+   - "本站不存储任何视频" / 기타 "저희는 파일을 저장하지 않습니다" and equivalents.
+   These disclaimers are the classic pirate attempt at safe harbor; when combined with direct episode/chapter/stream listings they are a RED FLAG for ENFORCE, not evidence of legitimacy.
+
+2) EPISODE / CHAPTER / SAGA CATALOGS of well-known copyrighted franchises (e.g. Dragon Ball, Naruto, One Piece, Demon Slayer, Jujutsu Kaisen, Attack on Titan, Marvel, DC, Disney/Pixar titles, HBO/Netflix originals, K-dramas) arranged by seasons, sagas, chapters, or episodes with "Ver/Watch/播放/보기" links and NO sign of being an official rights holder → ENFORCE (or Anime-specific piracy pattern).
+
+3) MANGA / MANHWA / MANHUA READER pages:
+   - Server selector ("Server 1", "Server 2"), chapter dropdown, Prev/Next navigation.
+   - Inline panels rendered on the page for free reading.
+   - Title headers like "<Title> - Chapter N" with a gallery of panels below.
+   Such pages are almost always scanlation / piracy readers → ENFORCE.
+
+4) LIVE SPORTS LISTS with phrases like:
+   - "en Vivo", "Live Now", "直播", "Partidos de hoy", "Watch live" next to league names (LaLiga, Premier League, Champions, NBA, NFL, Copa de Francia, Eredivisie, etc.)
+   - Schedules of matches with direct stream/play links.
+   → IPTV Piracy (19) if IPTV branding, else ENFORCE (1). A legitimate news site only shows scores/results, not embedded live streams or "ver en vivo" links.
+
+5) INTRUSIVE MONETIZATION typical of piracy (combined with other piracy signals, this is confirmatory):
+   - Forced popup/modal on load with "Close" buttons that open third-party redirect URLs.
+   - Adult banner ads on a non-adult (e.g. anime, manga, sports) site.
+   - Multiple redirect / affiliate domains, "smart link" shorteners, traffic monetizer scripts.
+   - Sticky floating video players or iframes not related to the stated topic.
+
+6) OFFICIAL-LOOKING BRANDING is NOT by itself proof of legitimacy. Only trust it when:
+   - The domain matches or is clearly operated by a known rights holder / official licensee, AND
+   - There is no direct free access to full copyrighted episodes/chapters/matches.
+   Examples of genuinely legitimate platforms: Crunchyroll, Netflix, Disney+, MangaPlaza (NTT Solmare), Shueisha's MANGA Plus, ViX, DAZN, Paramount+, Apple TV+, Spotify, Steam, Epic Games, Amazon, Kindle, Google Books, Audible.
+
+If piracy_brand_known is True AND any of signals 1-5 are present → strongly prefer ENFORCE (or a more specific piracy label), never Exclude.
+
 -------------------------
 LABEL DEFINITIONS
 -------------------------
@@ -135,7 +178,15 @@ Per media type guidance (when not covered by more specific labels like IPTV Pira
 
 Film & TV / Anime / Manga:
 - ENFORCE if the site allows the user to WATCH or DOWNLOAD full movies, series, anime episodes, or similar content without license.
-- EXCLUDE (ID 0) if it only offers reviews, ratings, news, articles, or trailers with no full content and no clear pirate links.
+- Concrete ENFORCE patterns (any of these is sufficient):
+  * Navigation menus grouping a franchise by seasons/sagas/arcs/chapters with episode-level pages (e.g. "Dragon Ball Z > Saga Saiyajin > Capítulo N", "Naruto Shippuden > Capítulo N").
+  * Title "Ver <franchise> online" / "Watch <title> online free" / "<title> 在线观看" / "<title> 무료보기" in <title> or <h1>.
+  * Post/article pages that are thin wrappers around an embedded video player or external streaming iframe for a full episode / full movie.
+  * Manga / manhwa / manhua reader UI: chapter/episode dropdown + "Server 1/Server 2" + Prev/Next + inline image panels. This alone is ENFORCE even if the landing page looks like a blog.
+  * A footer "safe harbor" disclaimer claiming the site does not host files, combined with clear streaming/download UX (see STRONG PIRACY SIGNALS #1). Do NOT treat the disclaimer as legitimacy.
+  * Catalog/home pages that display rows of popular anime/manga/movie covers with titles of known copyrighted works, and clicking them leads to free full playback/reading. WordPress or custom themes branded as "<name>.com – watch/read online" are a very common pattern.
+- EXCLUDE (ID 0) ONLY if the site is clearly a review/news/wiki/trailer site with NO full episodes, NO full chapters, NO live streams, and NO direct download links — typical examples: MyAnimeList, IMDb, Rotten Tomatoes, AniList, Letterboxd, Wikipedia articles, Fandom wikis, official publisher blogs.
+- Do NOT mark as Exclude based on the mere presence of Privacy Policy, Terms, Facebook/Twitter icons, comment widgets, or a "DMCA" link in the footer — pirate streaming sites routinely include all of these.
 
 Games:
 - ENFORCE if the site offers pirated game downloads or hacks/cheats that give unfair advantages (aimbots, cracks, keygens, loaders, etc.).
@@ -155,7 +206,12 @@ Music:
 
 Sports:
 - ENFORCE if the site illegally streams live sports matches or premium sports content without license.
-- EXCLUDE (ID 0) if it is only sports news, scores, or commentary without infringing streams.
+- Concrete ENFORCE patterns:
+  * Schedule/table of today's matches ("Partidos de hoy", "Hoy TV", "Live Matches", "直播") with team-vs-team links labeled "en Vivo" / "Live" / "Watch".
+  * Brands or clones like rojadirecta, pirlotv, futbollibre, libertv, 6stream, buffstreams, crackstreams, etc. — typical free streaming of LaLiga, Premier League, Champions, NBA, NFL, UFC, F1.
+  * Embedded players or iframes pointing to unknown CDNs for premium leagues without a licensing logo (DAZN, ESPN, Sky, beIN, etc.) being the operator.
+- If the site sells/advertises IPTV subscriptions, M3U lists, channel bouquets, "10k channels", TV box panels → IPTV Piracy (ID 19).
+- EXCLUDE (ID 0) if it is only sports news, scores, commentary, fantasy, statistics, or transfer rumors with no embedded live streams and no "watch live" links.
 
 Adult:
 - ENFORCE if it is an adult content site that primarily publishes infringing commercial content (but not involving minors or animals).
@@ -323,7 +379,14 @@ When deciding, follow this priority order:
    - Piracy brand indicator: if piracy_brand_known is True, strongly favor ENFORCE or a specific piracy label.
    - SSL score: low scores slightly increase suspicion; high scores slightly favor Exclude, but HTML and behavior are more important.
 
-If evidence is genuinely unclear and the site does not clearly fit any specific piracy pattern, and there is no obvious infringing content, use Exclude (ID 0).
+Default bias for HIGH-RISK media types:
+- When media_type is Film & TV, Anime, Manga, Sports, or Adult, and the HTML shows ANY of the STRONG PIRACY SIGNALS (fake safe-harbor disclaimer, episode/chapter/saga catalogs of known franchises, manga reader UI, live-match lists, intrusive redirect monetization), the correct answer is ENFORCE (or a specific piracy label), even if the site also has Privacy Policy, Terms, social media icons, a DMCA link, or a polished UI.
+- Do NOT require an explicit "Download" button or a visible video player in the snapshot. Navigation structure, titles, headings and catalog listings are sufficient evidence.
+
+Default bias for LOW-RISK media types:
+- When media_type is News, Online Courses, Other, or when the site is clearly an official rights-holder / licensee / storefront (Netflix, Disney+, Crunchyroll, MangaPlaza, Steam, Apple TV+, DAZN, Spotify, Amazon, etc.), prefer Exclude unless there is clear infringing functionality.
+
+If evidence is genuinely unclear AND media_type is not in the high-risk set AND none of the strong piracy signals are present, use Exclude (ID 0).
 
 
 -------------------------
