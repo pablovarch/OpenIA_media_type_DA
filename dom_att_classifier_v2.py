@@ -6,6 +6,14 @@ from datetime import datetime
 from psycopg2 import pool
 from pydantic import BaseModel
 from openai import AsyncOpenAI, RateLimitError, APIConnectionError, APIStatusError
+import asyncio
+import logging
+import os
+import re
+from datetime import datetime
+from psycopg2 import pool
+from pydantic import BaseModel
+from openai import AsyncOpenAI, RateLimitError, APIConnectionError, APIStatusError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from settings import DB_CONNECTION, openia_apikey
 from dotenv import load_dotenv
@@ -105,22 +113,58 @@ STRONG PIRACY SIGNALS (override generic legitimacy hints)
 
 Treat ANY of the following as strong evidence of infringement. If one or more of these appear on a Film & TV / Anime / Manga / Sports / Adult / Games / Software / Music / Publishing site, DO NOT classify as Exclude just because the site looks polished, has a Privacy Policy, a footer with legal links, or social media icons.
 
-1) FAKE SAFE-HARBOR DISCLAIMER in footer / legal copy, such as:
+1) FAKE SAFE-HARBOR / "BUY THE ORIGINAL" DISCLAIMER in footer / legal copy, such as:
    - "This site does not store any files on its servers"
    - "We do not host any videos/files"
    - "All content is provided by non-affiliated third parties"
    - "Este sitio no almacena ningún video / ningún archivo en sus servidores"
+   - "Esse site não hospeda nenhum vídeo em seu servidor"
+   - "Todo o conteúdo é disponibilizado por terceiros não afiliados"
    - "No alojamos ningún contenido, solo compartimos enlaces"
-   - "本站不存储任何视频" / 기타 "저희는 파일을 저장하지 않습니다" and equivalents.
-   These disclaimers are the classic pirate attempt at safe harbor; when combined with direct episode/chapter/stream listings they are a RED FLAG for ENFORCE, not evidence of legitimacy.
+   - "本站不存储任何视频" / "저희는 파일을 저장하지 않습니다" and equivalents.
+   - "This site does not store any files on our server, we only linked to the media which is hosted on 3rd party services" / "We only provide links / embeds to media hosted on other websites" / "All media is hosted by non-affiliated third parties" — the "we only link/embed" framing is the universal excuse of streaming aggregators.
+   - "All the comics on this website are only previews of the original comics" / "For the original version, please buy the comic" / "Please support the official release" / "Buy the original from the official publisher" — these "buy-the-original" disclaimers are the de-facto fingerprint of scanlation / manga-piracy aggregators.
+   - "漫画を無料で読む" (read manga for free) combined with no licensing — typical Japanese raw-manga piracy framing.
+   These disclaimers are the classic pirate attempt at safe harbor; when combined with direct episode/chapter listings, reader UIs, or large catalogs of copyrighted titles they are a RED FLAG for ENFORCE, not evidence of legitimacy.
 
-2) EPISODE / CHAPTER / SAGA CATALOGS of well-known copyrighted franchises (e.g. Dragon Ball, Naruto, One Piece, Demon Slayer, Jujutsu Kaisen, Attack on Titan, Marvel, DC, Disney/Pixar titles, HBO/Netflix originals, K-dramas) arranged by seasons, sagas, chapters, or episodes with "Ver/Watch/播放/보기" links and NO sign of being an official rights holder → ENFORCE (or Anime-specific piracy pattern).
+2) FILM & TV / ANIME STREAMING AGGREGATORS — TWO page types both qualify as ENFORCE:
 
-3) MANGA / MANHWA / MANHUA READER pages:
+   2a) CATALOG / HOME / GENRE / COUNTRY / TOP-IMDb / UPDATES pages:
+   - Navigation mega-menu combining dozens of Genres + dozens of Countries + "Movies / TV-Series / Anime / Top IMDb / Updates / Trending / Latest". Official platforms (Netflix/Disney+/HBO/Crunchyroll/Prime Video) do NOT expose a filter-by-country-of-origin or a 35+ genre grid on their home page; this layout is a fingerprint of pirate aggregators.
+   - Grid of posters with titles of known copyrighted works (HBO/Netflix/Disney/Marvel/Warner originals, popular movies/series) each with "HD/HDRip/CAM/TS/WEB-DL/BluRay" badge and "watch free/online" phrasing.
+   - Franchises arranged by seasons/sagas/arcs/chapters/episodes with "Ver/Watch/Assistir/播放/보기/Смотреть онлайн" links and NO sign of being an official rights holder.
+
+   2b) INDIVIDUAL WATCH / PLAY pages (this alone is sufficient, no need to actually see a video playing):
+   - URL pattern /watch/<slug>, /film/<slug>, /movie/<slug>, /serie(s)/<slug>, /ver/<slug>, /episode/<slug>, /play/<slug>, /stream/<slug>.
+   - <title> or meta description containing: "Watch Online FREE", "Watch <title> online free", "<title> Full Movie Online", "free streaming", "no registration required", "download to watch offline", "assistir online grátis", "ver online gratis", "在线观看", "무료보기", "無料視聴".
+   - Player DOM signature: a player container (`#player`, `.player-main`, `.jw-player`, `.plyr`, iframe from unknown CDN like *.xyz / *.top / *.site / *.pro) together with a SERVER SELECTOR (`#movie-server`, `.server-list`, labels like "Server 1/2/3", "Vidstream/VidPlay/StreamSB/StreamWish/MixDrop/DoodStream/StreamTape/FileMoon/UpCloud") and an EPISODE LIST (`#movie-episodes`, `.eps-list`, `.seasons-list`).
+   - Control bar layout with "Focus / Light / Auto Play / Auto Next / Prev / Next / Bookmark / Report" buttons — this exact layout is a shared fingerprint of pirate streaming CMS clones (FMovies/9Anime/HiAnime/GoGoAnime/SFlix/AZMovies/ZoroX/2Embed/Aniwatch templates).
+   - "Report" modal with fixed checkboxes: "Video wrong", "Audio not synced", "Subtitle not synced", "Subtitle wrong", "Broken link", "Wrong episode" — the same template recycled across hundreds of pirate aggregators.
+   - Metadata side panel listing `Productions: <HBO / Netflix / Disney / Warner Bros / Amazon / Paramount / A24 / Sony / Universal>` on a domain that is clearly NOT one of those rights holders → ENFORCE (the site is borrowing legitimacy signals, not operating the service).
+   - "You may also like" / "Related" / "Similar" sliders filled with posters of other popular copyrighted titles from different rights holders — aggregator pattern, not an official single-franchise site.
+   - Cross-links in footer or body to OTHER known pirate aggregators (e.g. hianime, fmovies, sflix, aniwatch, gogoanime, 9anime, primewire, soap2day, bflix, lookmovie, yesmovies, putlocker and their numerous clones) with or without utm_source attribution.
+
+   Any of (2a) or (2b) → ENFORCE. A single WATCH page with the DOM signature in (2b) is sufficient evidence even without seeing the catalog.
+
+3) MANGA / MANHWA / MANHUA piracy sites — TWO distinct page types both qualify as ENFORCE:
+
+   3a) READER pages:
    - Server selector ("Server 1", "Server 2"), chapter dropdown, Prev/Next navigation.
    - Inline panels rendered on the page for free reading.
-   - Title headers like "<Title> - Chapter N" with a gallery of panels below.
-   Such pages are almost always scanlation / piracy readers → ENFORCE.
+   - Title headers like "<Title> - Chapter N" with a gallery of panels below, or "Chapter: N" + "Start Reading" CTA.
+
+   3b) CATALOG / INDEX / GENRE / RANKING pages (very common landing pages — DO NOT require seeing a reader UI):
+   - Grid of manga/manhwa/manhua cover thumbnails with title, latest chapter number (e.g. "# 95", "Chapter 148") and view counter ("448,302 万", view eye icon).
+   - "UP" / "NEW" / "HOT" badges on covers.
+   - Navigation with: ホーム/Home, トレンド/Trending, ランキング/Ranking, 人気/Popular, ジャンル/Genre, Ecchi, アクション, ファンタジー, コメディ, Manhwa, Manhwa Hot, Webtoons, Smut, Mature, Adult, SM/BDSM, Loli, etc.
+   - URL paths like /manga/<slug>/, /genre/<x>/, /ranking/, /trending/, /chapter-<n>/.
+   - Titles ending in "Raw", "Raw Free", "Free", "無料", "제로" — strong manga-piracy marker.
+   - WordPress theme "mangareader" / "madara" / "themesia mangareader" (visible in CSS/JS paths like /wp-content/themes/mangareader/) is the de facto pirate manga theme.
+
+   3c) KNOWN MANGA-PIRACY BRAND TOKENS (any of these in domain, <title>, meta description, JSON-LD or footer is a strong piracy signal):
+   manga1000, manga1001, mangaraw, mangaraw.ac, rawkuma, rawqq, klmanga, 13dl, mangakakalot, manganato, mangapark, mangahere, mangafox, kissmanga, mangabuddy, mangaowl, kingofshojo, asurascans (and clones), flamescans, reaperscans (clones), nitroscans, lhtranslation, niadd, 漫画 raw, 漫画タウン, 漫画bank, 漫画村.
+
+   Any of (3a), (3b), or (3c) → ENFORCE. The presence of catalog/index alone (3b) is sufficient evidence even WITHOUT seeing a reader UI in the snapshot.
 
 4) LIVE SPORTS LISTS with phrases like:
    - "en Vivo", "Live Now", "直播", "Partidos de hoy", "Watch live" next to league names (LaLiga, Premier League, Champions, NBA, NFL, Copa de Francia, Eredivisie, etc.)
@@ -1310,4 +1354,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
