@@ -6,14 +6,6 @@ from datetime import datetime
 from psycopg2 import pool
 from pydantic import BaseModel
 from openai import AsyncOpenAI, RateLimitError, APIConnectionError, APIStatusError
-import asyncio
-import logging
-import os
-import re
-from datetime import datetime
-from psycopg2 import pool
-from pydantic import BaseModel
-from openai import AsyncOpenAI, RateLimitError, APIConnectionError, APIStatusError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from settings import DB_CONNECTION, openia_apikey
 from dotenv import load_dotenv
@@ -44,6 +36,8 @@ DOMAIN_ATTRIBUTES_TABLE = os.getenv("DOMAIN_ATTRIBUTES_TABLE", "domain_attribute
 DOMAIN_ID_COLUMN = os.getenv("DOMAIN_ID_COLUMN", "domain_id")
 MEDIA_TYPE_COLUMN = os.getenv("MEDIA_TYPE_COLUMN", "ml_media_type_id")
 ENFORCEMENT_LABEL_COLUMN = os.getenv("ENFORCEMENT_LABEL_COLUMN", "ml_domain_classification_id")
+DECISION_SOURCE_COLUMN = os.getenv("DECISION_SOURCE_COLUMN", "ml_decision_source")
+DECISION_SOURCE_VALUE = os.getenv("DECISION_SOURCE_VALUE", "Online Classifier v2")
 
 PIRACY_KEYWORDS_TABLE = os.getenv("PIRACY_KEYWORDS_TABLE", "ml_piracy_keywords")
 PIRACY_KEYWORDS_COLUMN = os.getenv("PIRACY_KEYWORDS_COLUMN", "keyword")
@@ -835,14 +829,12 @@ def get_all_domain_attributes_domains() -> list[int]:
         table = safe_identifier(DOMAIN_ATTRIBUTES_TABLE)
         domain_id_col = safe_identifier(DOMAIN_ID_COLUMN)
         media_type_col = safe_identifier(MEDIA_TYPE_COLUMN)
-        enforcement_col = safe_identifier(ENFORCEMENT_LABEL_COLUMN)
 
         sql_string = f"""
             SELECT da.{domain_id_col}
             FROM {table} da
             WHERE da.{media_type_col} IS NOT NULL
               AND  da.{media_type_col} <> 17
-              AND da.{enforcement_col} IS NULL
               AND EXISTS (
                 SELECT 1
                 FROM ad_events ae
@@ -1047,13 +1039,15 @@ def update_enforcement_label(domain_id: int, label_id: int) -> bool:
         table = safe_identifier(DOMAIN_ATTRIBUTES_TABLE)
         domain_id_col = safe_identifier(DOMAIN_ID_COLUMN)
         enforcement_col = safe_identifier(ENFORCEMENT_LABEL_COLUMN)
+        decision_source_col = safe_identifier(DECISION_SOURCE_COLUMN)
         sql_string = f"""
             UPDATE {table}
-            SET {enforcement_col} = %s
+            SET {enforcement_col} = %s,
+                {decision_source_col} = %s
             WHERE {domain_id_col} = %s
         """
 
-        cursor.execute(sql_string, (label_id, domain_id))
+        cursor.execute(sql_string, (label_id, DECISION_SOURCE_VALUE, domain_id))
         conn.commit()
         success = True
 
@@ -1354,3 +1348,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
