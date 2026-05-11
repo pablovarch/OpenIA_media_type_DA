@@ -38,10 +38,22 @@ MEDIA_TYPE_COLUMN = os.getenv("MEDIA_TYPE_COLUMN", "ml_media_type_id")
 ENFORCEMENT_LABEL_COLUMN = os.getenv("ENFORCEMENT_LABEL_COLUMN", "ml_domain_classification_id")
 DECISION_SOURCE_COLUMN = os.getenv("DECISION_SOURCE_COLUMN", "ml_decision_source")
 DECISION_SOURCE_VALUE = os.getenv("DECISION_SOURCE_VALUE", "Online Classifier v2")
+DOMAIN_LAST_SEEN_COLUMN = os.getenv("DOMAIN_LAST_SEEN_COLUMN", "ch_last_seen")
+RECLASSIFICATION_WINDOW_DAYS = int(os.getenv("RECLASSIFICATION_WINDOW_DAYS", "60"))
+DOMAIN_ONLINE_STATUS_COLUMN = os.getenv("DOMAIN_ONLINE_STATUS_COLUMN", "online_status")
+DOMAIN_ONLINE_STATUS_VALUE = os.getenv("DOMAIN_ONLINE_STATUS_VALUE", "Online")
 
 PIRACY_KEYWORDS_TABLE = os.getenv("PIRACY_KEYWORDS_TABLE", "ml_piracy_keywords")
 PIRACY_KEYWORDS_COLUMN = os.getenv("PIRACY_KEYWORDS_COLUMN", "keyword")
 PIRACY_KEYWORDS_BRAND_COLUMN = os.getenv("PIRACY_KEYWORDS_BRAND_COLUMN", "brand")
+
+DOMAIN_CLASSIFICATION_HISTORY_TABLE = os.getenv(
+    "DOMAIN_CLASSIFICATION_HISTORY_TABLE",
+    "domain_classification_history",
+)
+HISTORY_DOMAIN_ID_COLUMN = os.getenv("HISTORY_DOMAIN_ID_COLUMN", "domain_id")
+HISTORY_SOURCE_COLUMN = os.getenv("HISTORY_SOURCE_COLUMN", "classif_source")
+HISTORY_DATE_COLUMN = os.getenv("HISTORY_DATE_COLUMN", "classif_date")
 
 DOMAIN_SSL_TABLE = os.getenv("DOMAIN_SSL_TABLE", "domain_ssl_data")
 DOMAIN_SSL_REQUESTED_DOMAIN_COLUMN = os.getenv("DOMAIN_SSL_REQUESTED_DOMAIN_COLUMN", "requested_domain")
@@ -829,12 +841,33 @@ def get_all_domain_attributes_domains() -> list[int]:
         table = safe_identifier(DOMAIN_ATTRIBUTES_TABLE)
         domain_id_col = safe_identifier(DOMAIN_ID_COLUMN)
         media_type_col = safe_identifier(MEDIA_TYPE_COLUMN)
+        enforcement_col = safe_identifier(ENFORCEMENT_LABEL_COLUMN)
+        last_seen_col = safe_identifier(DOMAIN_LAST_SEEN_COLUMN)
+        online_status_col = safe_identifier(DOMAIN_ONLINE_STATUS_COLUMN)
+        history_table = safe_identifier(DOMAIN_CLASSIFICATION_HISTORY_TABLE)
+        history_domain_id_col = safe_identifier(HISTORY_DOMAIN_ID_COLUMN)
+        history_source_col = safe_identifier(HISTORY_SOURCE_COLUMN)
+        history_date_col = safe_identifier(HISTORY_DATE_COLUMN)
 
         sql_string = f"""
             SELECT da.{domain_id_col}
             FROM {table} da
             WHERE da.{media_type_col} IS NOT NULL
               AND  da.{media_type_col} <> 17
+              AND da.{online_status_col} = %s
+              AND (
+                da.{enforcement_col} IS NULL
+                OR (
+                    da.{last_seen_col} >= CURRENT_DATE - INTERVAL '{RECLASSIFICATION_WINDOW_DAYS} days'
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM {history_table} dch
+                        WHERE dch.{history_domain_id_col} = da.{domain_id_col}
+                          AND dch.{history_source_col} = %s
+                          AND dch.{history_date_col} >= CURRENT_DATE - INTERVAL '{RECLASSIFICATION_WINDOW_DAYS} days'
+                    )
+                )
+              )
               AND EXISTS (
                 SELECT 1
                 FROM ad_events ae
@@ -849,7 +882,7 @@ def get_all_domain_attributes_domains() -> list[int]:
             LIMIT {DOMAIN_PROCESS_LIMIT}
         """
 
-        cursor.execute(sql_string)
+        cursor.execute(sql_string, (DOMAIN_ONLINE_STATUS_VALUE, DECISION_SOURCE_VALUE))
         results = cursor.fetchall()
 
         if results:
@@ -1348,4 +1381,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
