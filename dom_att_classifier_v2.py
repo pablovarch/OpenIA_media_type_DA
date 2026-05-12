@@ -28,7 +28,7 @@ MAX_CONCURRENT_REQUESTS = 5  # Semaphore limit for API calls
 DB_POOL_MIN_CONN = 1
 DB_POOL_MAX_CONN = 10
 
-MODEL_NAME = os.getenv("OPENAI_MODEL", "gpt-5.1-2025-11-13")
+MODEL_NAME = os.getenv("OPENAI_MODEL", "gpt-5.4-2026-03-05")
 REASONING_EFFORT = os.getenv("OPENAI_REASONING_EFFORT", "none")
 DOMAIN_PROCESS_LIMIT = int(os.getenv("DOMAIN_PROCESS_LIMIT", "1000"))
 
@@ -37,7 +37,7 @@ DOMAIN_ID_COLUMN = os.getenv("DOMAIN_ID_COLUMN", "domain_id")
 MEDIA_TYPE_COLUMN = os.getenv("MEDIA_TYPE_COLUMN", "ml_media_type_id")
 ENFORCEMENT_LABEL_COLUMN = os.getenv("ENFORCEMENT_LABEL_COLUMN", "ml_domain_classification_id")
 DECISION_SOURCE_COLUMN = os.getenv("DECISION_SOURCE_COLUMN", "ml_decision_source")
-DECISION_SOURCE_VALUE = os.getenv("DECISION_SOURCE_VALUE", "Online Classifier v2")
+DECISION_SOURCE_VALUE = os.getenv("DECISION_SOURCE_VALUE", "Classifier_2026.01")
 DOMAIN_LAST_SEEN_COLUMN = os.getenv("DOMAIN_LAST_SEEN_COLUMN", "ch_last_seen")
 RECLASSIFICATION_WINDOW_DAYS = int(os.getenv("RECLASSIFICATION_WINDOW_DAYS", "60"))
 DOMAIN_ONLINE_STATUS_COLUMN = os.getenv("DOMAIN_ONLINE_STATUS_COLUMN", "online_status")
@@ -1381,5 +1381,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-
