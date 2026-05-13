@@ -42,6 +42,7 @@ DOMAIN_LAST_SEEN_COLUMN = os.getenv("DOMAIN_LAST_SEEN_COLUMN", "ch_last_seen")
 RECLASSIFICATION_WINDOW_DAYS = int(os.getenv("RECLASSIFICATION_WINDOW_DAYS", "60"))
 DOMAIN_ONLINE_STATUS_COLUMN = os.getenv("DOMAIN_ONLINE_STATUS_COLUMN", "online_status")
 DOMAIN_ONLINE_STATUS_VALUE = os.getenv("DOMAIN_ONLINE_STATUS_VALUE", "Online")
+ANALYST_CLASSIFICATION_COLUMN = os.getenv("ANALYST_CLASSIFICATION_COLUMN", "analyst_classification_id")
 
 PIRACY_KEYWORDS_TABLE = os.getenv("PIRACY_KEYWORDS_TABLE", "ml_piracy_keywords")
 PIRACY_KEYWORDS_COLUMN = os.getenv("PIRACY_KEYWORDS_COLUMN", "keyword")
@@ -780,7 +781,9 @@ MEDIA_TYPE_ID_TO_NAME: dict[int, str] = {
     10: "News",
     13: "Content Host",
     7: "Software",
+    11: "General",
     12: "Other",
+    16: "Publishing",
     17: "invalid",
 }
 
@@ -848,6 +851,7 @@ def get_all_domain_attributes_domains() -> list[int]:
         history_domain_id_col = safe_identifier(HISTORY_DOMAIN_ID_COLUMN)
         history_source_col = safe_identifier(HISTORY_SOURCE_COLUMN)
         history_date_col = safe_identifier(HISTORY_DATE_COLUMN)
+        analyst_col = safe_identifier(ANALYST_CLASSIFICATION_COLUMN)
 
         sql_string = f"""
             SELECT da.{domain_id_col}
@@ -866,6 +870,8 @@ def get_all_domain_attributes_domains() -> list[int]:
                           AND dch.{history_source_col} = %s
                           AND dch.{history_date_col} >= CURRENT_DATE - INTERVAL '{RECLASSIFICATION_WINDOW_DAYS} days'
                     )
+                    AND da.{analyst_col} IS NOT NULL
+                    AND da.{analyst_col} <> da.{enforcement_col}
                 )
               )
               AND EXISTS (
@@ -1381,3 +1387,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
