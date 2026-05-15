@@ -104,6 +104,7 @@ You will receive a user message with:
 - ssl_score: a numeric score where higher values indicate a more trustworthy / legitimate configuration, and lower values indicate more suspicious configuration. This score is only a weak hint: HTML evidence and the definitions below are more important.
 - privacy_policy_detected: a boolean crawler signal indicating the site likely has a Privacy Policy page (True/False)
 - terms_of_use_detected: a boolean crawler signal indicating the site likely has Terms/Terms of Use/Terms & Conditions (True/False)
+- blocked_snapshot_detected: a boolean crawler signal indicating the captured HTML appears to be a bot-check, CAPTCHA, Cloudflare challenge, access-denied, forbidden, DDoS-protection, or other blocked/interstitial snapshot (True/False)
 
 You must primarily rely on:
 1) The HTML content and site behavior.
@@ -111,6 +112,7 @@ You must primarily rely on:
 3) The piracy_brand_known flag (strong signal of piracy when True).
 Use ssl_score only as a secondary signal in ambiguous cases, never as the sole reason for an enforcement decision.
 Use privacy_policy_detected and terms_of_use_detected only as WEAK legitimacy hints: pirates can copy or fake these pages. Do NOT choose Exclude solely because these are True.
+Use blocked_snapshot_detected as an incomplete-evidence signal, NOT as a legitimacy signal. Cloudflare, CAPTCHA, access denied, forbidden, and DDoS-protection pages are common on pirate sites. Do NOT choose Exclude solely because blocked_snapshot_detected is True. If the domain has a known piracy brand, high-risk media type, or residual piracy evidence in the snapshot, still classify according to the piracy evidence.
 
 IMPORTANT: The HTML can be in ANY language (Spanish, Chinese, Korean, Japanese, Portuguese, Russian, Arabic, Turkish, etc.). Do NOT bias toward Exclude just because the site is not in English. Non-English pirate sites are extremely common (e.g. Spanish "ver online", Chinese 在线观看, Korean 보기, Japanese 無料視聴).
 
@@ -622,22 +624,28 @@ def should_fast_exclude(prepared_text: str, raw_html: str) -> bool:
         r"afternic",
     ]
 
-    blocked_patterns = [
-        r"captcha",
-        r"verify\s+you\s+are\s+human",
-        r"attention\s+required",
-        r"cloudflare",
-        r"ddos\s+protection",
-        r"access\s+denied",
-        r"forbidden",
-        r"error\s*403",
-        r"temporarily\s+unavailable",
-        r"unusual\s+traffic",
-    ]
-
     for pat in parking_patterns:
         if re.search(pat, hay) or re.search(pat, raw):
             return True
+
+    return False
+
+
+def detect_blocked_snapshot(prepared_text: str | None, raw_html: str | None) -> bool:
+    hay = (prepared_text or "").lower()
+    raw_full = (raw_html or "")
+    raw = raw_full[:200000].lower()
+
+    blocked_patterns = [
+        r"verify\s+you\s+are\s+human",
+        r"attention\s+required",
+        r"checking\s+your\s+browser",
+        r"cf-challenge",
+        r"forbidden",
+        r"temporarily\s+unavailable",
+        r"unusual\s+traffic",
+        r"ray\s+id",
+    ]
 
     for pat in blocked_patterns:
         if re.search(pat, hay) or re.search(pat, raw):
@@ -1119,6 +1127,7 @@ async def classify_enforcement(
         ssl_score: float,
         privacy_policy_detected: bool,
         terms_of_use_detected: bool,
+        blocked_snapshot_detected: bool,
         domain_id: int
 ) -> int:
     """
@@ -1150,7 +1159,8 @@ async def classify_enforcement(
             f"piracy_brand_known: {piracy_brand_known}\n"
             f"ssl_score: {ssl_score}\n"
             f"privacy_policy_detected: {privacy_policy_detected}\n"
-            f"terms_of_use_detected: {terms_of_use_detected}\n\n"
+            f"terms_of_use_detected: {terms_of_use_detected}\n"
+            f"blocked_snapshot_detected: {blocked_snapshot_detected}\n\n"
             "Below is extracted and cleaned page text from the snapshot (possibly truncated):\n\n"
             "```text\n"
             f"{prepared}\n"
@@ -1285,6 +1295,12 @@ async def process_domain(
                 update_enforcement_label(domain_id, 0)
                 return (domain_id, 'processed')
 
+            blocked_snapshot_detected = detect_blocked_snapshot(prepared_text, html_content)
+            if blocked_snapshot_detected:
+                logger.info(
+                    f"Blocked/interstitial snapshot detected for domain_id {domain_id}; sending to LLM for evaluation"
+                )
+
             # Step 2: Classify with OpenAI
             label_id = await classify_enforcement(
                 client=client,
@@ -1295,6 +1311,7 @@ async def process_domain(
                 ssl_score=ssl_score,
                 privacy_policy_detected=privacy_policy_detected,
                 terms_of_use_detected=terms_of_use_detected,
+                blocked_snapshot_detected=blocked_snapshot_detected,
                 domain_id=domain_id,
             )
 
@@ -1387,4 +1404,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
